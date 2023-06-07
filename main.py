@@ -22,38 +22,11 @@ class Search:
         self.root = tree.getroot()
         # Dicionario para armazenar indice invertido
         self.hash = {}
-
+                    
     def createHash(self) -> None:
         # Iterar sobre cada elemento <page>
         for child in self.root:
-            # Recupera as informações id, título e texto do XML
-            id = child[0].text
-            title = child[1].text
-            text = child[2].text
-            
-            # Passa todos os caracteres do título para maiúsculo
-            title = title.lower()
-            
-            # Instancia um objeto Page e atribui o id, titulo e texto da página
-            page = Page(id, title, text)
-            
-            # Cria uma lista de palavras contidas no título
-            words = title.split(' ')
-            
-            # Itera sobre cada palavra do título
-            for word in words:
-                if word in self.hash:
-                    # Adiciona o objeto da página em uma lista que está associada a uma posição do hash
-                    self.hash[word].append(page)
-                else:
-                    # Cria uma lista associada a posição do hash e adiciona o primeiro objeto
-                    self.hash[word] = []
-                    self.hash[word].append(page)
-                    
-    def createHash_2(self) -> None:
-        # Iterar sobre cada elemento <page>
-        for child in self.root:
-            # Recupera as informações id, título e texto do XML
+            # Recupera as informações título e texto do XML
             id = child[0].text
             title = child[1].text
             text = child[2].text
@@ -73,6 +46,9 @@ class Search:
             
             # Itera sobre cada palavra do título
             for word in words:
+                # Passa todas as palavras que estiverem no plural para o singular
+                word = self.toSingular(word)
+                
                 if word in self.hash:
                     # Adiciona o objeto da página em uma lista que está associada a uma posição do hash
                     self.hash[word].append(page)
@@ -80,76 +56,77 @@ class Search:
                     # Cria uma lista associada a posição do hash e adiciona o primeiro objeto
                     self.hash[word] = []
                     self.hash[word].append(page)
-
-    def searchByTitle(self, word: str) -> None:
-        word = self.handleInput(word) 
-        # word = word.lower()
-        # Tratamento de erro para chaves não encontradas no dicionário
-        try:
-            # Lista dos itens encontrados para a chave pesquisada
-            pages = self.hash[word]
             
-            print(f"Títulos que possuem a palavra {word}:")
-            for page in pages:
-                print(f"{page.getID()} - {page.getTitle()}")
-                
-            print(f"Total de títulos encontrados: {len(pages)}")
-        except KeyError:
-            print(f"[Palavra '{word}' não encontrada no hash]")
-            
-    def searchForRelevance(self, word: str) -> None:
-        word = self.handleInput(word)
+    def searchByTitleOcurrences(self, word: str) -> None:
+        # Passa todos os caracteres da palavra para minúsculo
+        word = self.toLower(word)
+        # Passa a palavra para o singular
+        word = self.toSingular(word)
         occurrencesList = {}
         
         try:
             # Lista dos itens encontrados para a chave pesquisada
             pages = self.hash[word]
-            sortedList = []
             
             # Guardando objeto como chave e quantidade de ocorrências como valor em itens de um dicionário
             for page in pages:
-                id = page.getID()
                 title = page.getTitle()
                 text = page.getText()
                 
                 occurrencesInTitle = title.count(word)
                 occurrencesInText = text.count(word)
                 
+                # Verifica se existe alguma ocorrência da palavra no título
                 if occurrencesInTitle > 0:
                     occurrences = occurrencesInText * 2
                 else:
                     occurrences = occurrencesInText
                     
-                
                 occurrencesList[page] = occurrences
 
             # Criando uma lista com os objetos ordenados por quantidade de ocorrências em ordem decrescente
+            print(f"{len(occurrencesList)} resultado(s) encontrado(s).")
             for page in sorted(occurrencesList, key = occurrencesList.get, reverse = True):
-                print(f"[{page.getID():<5}] - (Relevância: {occurrencesList[page]}) - {page.getTitle():<55} ")
-                # sortedList.append(page)
-                
-            # Printar lista de titulos ordenados por quantidade de ocorrência
-            # for page in sortedList:
-            #     print(f"{page.getID()} - {page.getTitle()}")
+                print(f"[{page.getID():<5}] - (Relevância: {occurrencesList[page]:<3}) - {page.getTitle():<55} ")
                 
         except KeyError:
-            print(f"[Palavra '{word}' não encontrada no hash]")
+            print(f"[ERRO]: Palavra '{word}' não encontrada no hash.")
             
-    def handleInput(self, input: str) -> str:
+    def toLower(self, input: str) -> str:
         # Passando para minúsculo todos os caracteres contidos na palavra
         input = input.lower()
         
         return input
+    
+    def toSingular(self, word: str) -> str:
+        # Passa a palavra que está no plural para o singular
+        lastLetterPos = len(word)-1
+        lastLetter = word[lastLetterPos]
+        singularWord = word[:lastLetterPos]
         
-    def printHash(self) -> None:
-        for palavra in self.hash:
-            print(f"indice[{palavra}]: {self.hash[palavra]}")
+        # Se a palavra estiver no plural, retorna ela no singular. Senão, retorna a palavra original.
+        if lastLetter == 's':
+            return singularWord
+        else:
+            return word
+    
+    def menu(self) -> None:
+        while(True):
+            print("\x1b[2J\x1b[1;1H")
+            word = input("Buscar pela palavra\n-> ")
+            
+            if len(word) < 4:
+                print("[ERRO]: A palavra deve conter pelo menos 4 caracteres ou mais.")
+            else:
+                self.toSingular(word)
+                self.searchByTitleOcurrences(word)
+                
+            input("Pressione ENTER para continuar...")
+            continue
+    
+    def execute(self) -> None:
+        self.createHash()
+        self.menu()
 
-# busca = Search()
-# busca.createHash()
-# busca.searchByTitle("network")
-
-# Tarefa 4
-busca = Search()
-busca.createHash_2()
-busca.searchForRelevance("education")
+search = Search()
+search.execute()
